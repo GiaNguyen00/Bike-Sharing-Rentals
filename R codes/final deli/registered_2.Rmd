@@ -1,0 +1,208 @@
+---
+title: "registered_2"
+output: html_document
+date: "2023-04-14"
+---
+
+```{r}
+library(car)
+library(dplyr)
+library(ggplot2)
+library(hrbrthemes)
+library(GGally)
+library(gridExtra)
+library(nlme)
+```
+
+```{r}
+daydata <- read.csv("/Users/bach_nguyen/MA 575/Labs/Project/Data/day.csv",header=TRUE)
+df = data.frame(daydata)
+df[df==-200]<-NA
+df <- na.omit(df)
+df = df[-c(239,266, 328,22),] #there are high leverage, will need reasons to justify removing
+train = df[df$yr == '0',]
+validation = df[df$yr == '1',]
+attach(train)
+```
+
+```{r}
+cat ("2-1: ", mean(train$registered[train$mnth==2]) - mean(train$registered[train$mnth==1]), "\n")
+cat ("3-2: ", mean(train$registered[train$mnth==3]) - mean(train$registered[train$mnth==2]), "\n")
+cat ("4-3: ", mean(train$registered[train$mnth==4]) - mean(train$registered[train$mnth==3]), "\n")
+cat ("5-4: ", mean(train$registered[train$mnth==5]) - mean(train$registered[train$mnth==4]), "\n")
+cat ("6-5: ", mean(train$registered[train$mnth==6]) - mean(train$registered[train$mnth==5]), "\n")
+cat ("7-6: ", mean(train$registered[train$mnth==7]) - mean(train$registered[train$mnth==6]), "\n")
+cat ("8-7: ", mean(train$registered[train$mnth==8]) - mean(train$registered[train$mnth==7]), "\n")
+cat ("9-8: ", mean(train$registered[train$mnth==9]) - mean(train$registered[train$mnth==8]), "\n")
+cat ("10-9: ", mean(train$registered[train$mnth==10]) - mean(train$registered[train$mnth==9]), "\n")
+cat ("11-10: ", mean(train$registered[train$mnth==11]) - mean(train$registered[train$mnth==10]), "\n")
+cat ("12-11: ", mean(train$registered[train$mnth==12]) - mean(train$registered[train$mnth==11]), "\n")
+mean(train$registered[train$mnth==12]) - mean(train$registered[train$mnth==1])
+```
+
+```{r}
+cat ("1: ", mean(train$registered[train$mnth==1]), "\n")
+cat ("2: ", mean(train$registered[train$mnth==2]) , "\n")
+cat ("3: ", mean(train$registered[train$mnth==3]) , "\n")
+cat ("4: ", mean(train$registered[train$mnth==4]) , "\n")
+cat ("5: ", mean(train$registered[train$mnth==5]) , "\n")
+cat ("6: ", mean(train$registered[train$mnth==6]) , "\n")
+cat ("7: ", mean(train$registered[train$mnth==7]) , "\n")
+cat ("8: ", mean(train$registered[train$mnth==8]) , "\n")
+cat ("9: ", mean(train$registered[train$mnth==9]) , "\n")
+cat ("10: ", mean(train$registered[train$mnth==10]) , "\n")
+cat ("11: ", mean(train$registered[train$mnth==11]) , "\n")
+cat ("12: ", mean(train$registered[train$mnth==12]) , "\n")
+```
+
+
+
+```{r}
+#mean((train$cnt[train$mnth==1])) 
+#mean((train$cnt[train$mnth==6]) )
+sum_12 <- mean(train$registered[train$mnth != 1])
+sum_12
+sum_1 <- mean(train$registered[train$mnth==1])
+sum_1
+(log(sum_12) - log(sum_1))/1
+```
+
+```{r}
+cat("mnth 1:", sum(train$registered[train$mnth == 1]), "\n")
+cat("2-1: ", sum(train$registered[train$mnth == 2])-sum(train$registered[train$mnth == 1]),"\n")
+cat("3-2: ", sum(train$registered[train$mnth == 3])-sum(train$registered[train$mnth == 2]),"\n")
+cat("4-3: ", sum(train$registered[train$mnth == 4])-sum(train$registered[train$mnth == 3]),"\n")
+cat("5-4: ", sum(train$registered[train$mnth == 5])-sum(train$registered[train$mnth == 4]),"\n")
+cat("6-5: ", sum(train$registered[train$mnth == 6])-sum(train$registered[train$mnth == 5]),"\n")
+cat("7-6: ", sum(train$registered[train$mnth == 7])-sum(train$registered[train$mnth == 6]),"\n")
+cat("8-7: ", sum(train$registered[train$mnth == 8])-sum(train$registered[train$mnth == 7]),"\n")
+cat("9-8: ", sum(train$registered[train$mnth == 9])-sum(train$registered[train$mnth == 8]),"\n")
+cat("10-9: ", sum(train$registered[train$mnth == 10])-sum(train$registered[train$mnth == 9]),"\n")
+cat("11-10: ", sum(train$registered[train$mnth == 11])-sum(train$registered[train$mnth == 10]),"\n")
+cat("12-11: ", sum(train$registered[train$mnth == 12])-sum(train$registered[train$mnth == 11]),"\n")
+user_base <- 34228+7745+9246+21305+32247+8129+2071
+cat("user base: ",user_base, "\n")
+(log(114971) - log(34228)) / 1
+```
+
+
+
+```{r}
+cat("2011: ",mean(train$registered), "\n")
+cat("2012: ",mean(validation$registered), "\n")
+sum_2011 <- sum(train$registered)
+sum_2012 <- sum(validation$registered)
+log(sum_2012) - log(sum_2011)
+```
+
+```{r}
+cat("mnth 1:", sum(train$cnt[train$mnth == 1]), "\n")
+cat("2-1: ", sum(train$cnt[train$mnth == 2])-sum(train$cnt[train$mnth == 1]),"\n")
+cat("3-2: ", sum(train$cnt[train$mnth == 3])-sum(train$cnt[train$mnth == 2]),"\n")
+cat("4-3: ", sum(train$cnt[train$mnth == 4])-sum(train$cnt[train$mnth == 3]),"\n")
+cat("5-4: ", sum(train$cnt[train$mnth == 5])-sum(train$cnt[train$mnth == 4]),"\n")
+cat("6-5: ", sum(train$cnt[train$mnth == 6])-sum(train$cnt[train$mnth == 5]),"\n")
+cat("7-6: ", sum(train$cnt[train$mnth == 7])-sum(train$cnt[train$mnth == 6]),"\n")
+cat("8-7: ", sum(train$cnt[train$mnth == 8])-sum(train$cnt[train$mnth == 7]),"\n")
+cat("9-8: ", sum(train$cnt[train$mnth == 9])-sum(train$cnt[train$mnth == 8]),"\n")
+cat("10-9: ", sum(train$cnt[train$mnth == 10])-sum(train$cnt[train$mnth == 9]),"\n")
+cat("11-10: ", sum(train$cnt[train$mnth == 11])-sum(train$cnt[train$mnth == 10]),"\n")
+cat("12-11: ", sum(train$cnt[train$mnth == 12])-sum(train$cnt[train$mnth == 11]),"\n")
+user_base <- 37208+11007+15830+30825+40951+7691
+cat("user base: ",user_base, "\n")
+(log(143512) - log(37208)) / 1
+```
+
+```{r}
+cat("mnth 1:", sum(train$cnt[train$mnth == 1]), "\n")
+cat("2-1: ", sum(train$cnt[train$mnth == 2])-sum(train$cnt[train$mnth == 1]),"\n")
+cat("3-2: ", sum(train$cnt[train$mnth == 3])-sum(train$cnt[train$mnth == 2]),"\n")
+cat("4-3: ", sum(train$cnt[train$mnth == 4])-sum(train$cnt[train$mnth == 3]),"\n")
+cat("5-4: ", sum(train$cnt[train$mnth == 5])-sum(train$cnt[train$mnth == 4]),"\n")
+cat("6-5: ", sum(train$cnt[train$mnth == 6])-sum(train$cnt[train$mnth == 5]),"\n")
+cat("7-6: ", sum(train$cnt[train$mnth == 7])-sum(train$cnt[train$mnth == 6]),"\n")
+cat("8-7: ", sum(train$cnt[train$mnth == 8])-sum(train$cnt[train$mnth == 7]),"\n")
+cat("9-8: ", sum(train$cnt[train$mnth == 9])-sum(train$cnt[train$mnth == 8]),"\n")
+cat("10-9: ", sum(train$cnt[train$mnth == 10])-sum(train$cnt[train$mnth == 9]),"\n")
+cat("11-10: ", sum(train$cnt[train$mnth == 11])-sum(train$cnt[train$mnth == 10]),"\n")
+cat("12-11: ", sum(train$cnt[train$mnth == 12])-sum(train$cnt[train$mnth == 11]),"\n")
+user_base_increase <- 11007+15830+30825+40951+7691
+user_base_increase
+user_base_sum <- sum(train$cnt)
+#cat("rate is: ", user_base_increase/user_base_sum)
+cat("2010: ", user_base_sum - user_base_increase,"\n")
+user_base_2010 <- user_base_sum - user_base_increase
+cat("rate is: ",user_base_increase  / user_base_2010, "\n" )
+#(log(user_base_sum) - log(user_base_increase)) / 1
+```
+```{r}
+#mnth 4 has the fastest rate
+#mnth 1 has the lowest rate
+max <- sum(train$cnt[train$mnth == 4])
+min <- sum(train$cnt[train$mnth == 1])
+cat("rate is: ", (max/min)-1)
+```
+
+
+```{r}
+x <- c(2,4,8,16,32,64)
+plot(log(x))
+```
+
+```{r}
+cat("sum of 12: ", sum(cnt[train$mnth == 12]),"\n")
+cat("sum of 1: ", sum(cnt[train$mnth == 1]),"\n")
+cat("annual rate is: ", (sum(cnt[train$mnth == 12]) / sum(cnt[train$mnth == 1]))^(1/12) -1)
+yr_rate <- ( (sum(cnt[train$mnth == 12]) / sum(cnt[train$mnth == 1]))^(1/12) -1 ) * 12
+```
+
+
+```{r}
+
+m <-  lm(registered~temp + I(temp^2)+ I(temp^3) + windspeed + as.factor(season) + as.factor(weathersit) )
+summary(m)
+```
+```{r}
+new_data <- data.frame(instant=validation$instant,temp=validation$temp, windspeed =validation$windspeed,hum=validation$hum, season =validation$season, weathersit=validation$weathersit, workingday=validation$workingday, mnth= validation$mnth, holiday = validation$holiday, weekday=validation$weekday, yr=validation$yr)
+
+
+output <- predict(m,se.fit = TRUE, newdata = new_data)
+
+# Create data frame with validation observation and prediction
+test = data.frame(validation$registered,output$fit*rate, 1:length(output$fit));
+colnames(test)[1] = "Registered"
+colnames(test)[2] = "Prediction"
+colnames(test)[3] = "Index"
+```
+
+```{r}
+#Calculate MSE
+# Residuals for training data
+ResMLS <- resid(m)
+
+# Mean Square Error for training data
+cat("MSE for training:", mean((ResMLS)^2))
+cat("\n")
+cat("RMSE for training:", sqrt(mean((ResMLS)^2)))
+
+cat("\n")
+cat("\n")
+
+#Mean Square Error for validation (year: 2012)
+ResMLSValidation <- validation$registered - output$fit
+cat("MSE for validation:", mean((ResMLSValidation)^2))
+cat("\n")
+cat("RMSE for validation:", sqrt(mean((ResMLSValidation)^2)))
+cat("\n")
+#cat("mean diff between validation$cnt and training$cnt", mean(validation$cnt - train$cnt))
+```
+
+```{r}
+ggplot(data = test, aes(x = Index)) +
+  geom_line(aes(y = Registered, color = "Registered")) + 
+  geom_line(aes(y = Prediction, color="Prediction"), linetype="twodash") +  
+  scale_color_manual(name = element_blank(), labels = c("Registered","Prediction"),
+                     values = c("darkred", "steelblue")) + labs(y = "") + 
+  ggtitle("Validation")
+```
+

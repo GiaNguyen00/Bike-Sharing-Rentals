@@ -1,0 +1,97 @@
+---
+title: "registered_1"
+output: html_document
+date: "2023-04-06"
+---
+
+```{r}
+library(car)
+library(dplyr)
+library(ggplot2)
+library(hrbrthemes)
+library(GGally)
+library(gridExtra)
+library(nlme)
+```
+
+```{r}
+daydata <- read.csv("/Users/bach_nguyen/MA 575/Labs/Project/Data/day.csv",header=TRUE)
+df = data.frame(daydata)
+df[df==-200]<-NA
+df <- na.omit(df)
+df = df[-c(239,266, 328,22),] #there are high leverage, will need reasons to justify removing
+train = df[df$yr == '0',]
+validation = df[df$yr == '1',]
+attach(train)
+```
+
+```{r}
+data <- data.frame(registered, temp, atemp, hum, windspeed)
+ggpairs(data, upper = list(continuous = wrap("points", alpha = 0.3,    size=0.1)),
+lower = list(continuous = wrap('cor', size = 4)))
+```
+
+```{r}
+par(mfrow=c(2,2))
+boxplot(registered~as.factor(season),ylab="registered", xlab="season")
+boxplot(registered~as.factor(workingday),ylab="registered", xlab="workingday")
+boxplot(registered~as.factor(weathersit),ylab="registered", xlab="weathersit")
+boxplot(registered~as.factor(weekday),ylab="registered", xlab="weekday")
+```
+
+```{r}
+train$growth = 1.05
+m <-  lm(registered~temp + I(temp^2)+ I(temp^3) + windspeed + as.factor(season) + as.factor(weathersit) + train$growth*(temp + I(temp^2)+ I(temp^3) + windspeed + as.factor(season) + as.factor(weathersit)))
+summary(m)
+```
+
+
+```{r}
+new_data <- data.frame(instant=validation$instant,temp=validation$temp, windspeed =validation$windspeed,hum=validation$hum, season =validation$season, weathersit=validation$weathersit, workingday=validation$workingday, mnth= validation$mnth, holiday = validation$holiday, weekday=validation$weekday, yr=validation$yr)
+
+
+output <- predict(m,se.fit = TRUE, newdata = new_data)
+
+# Create data frame with validation observation and prediction
+test = data.frame(validation$registered,output$fit, 1:length(output$fit));
+colnames(test)[1] = "Registered"
+colnames(test)[2] = "Prediction"
+colnames(test)[3] = "Index"
+```
+
+
+```{r}
+#Calculate MSE
+# Residuals for training data
+ResMLS <- resid(m)
+
+# Mean Square Error for training data
+cat("MSE for training:", mean((ResMLS)^2))
+cat("\n")
+cat("RMSE for training:", sqrt(mean((ResMLS)^2)))
+
+cat("\n")
+cat("\n")
+
+#Mean Square Error for validation (year: 2012)
+ResMLSValidation <- validation$registered - output$fit
+cat("MSE for validation:", mean((ResMLSValidation)^2))
+cat("\n")
+cat("RMSE for validation:", sqrt(mean((ResMLSValidation)^2)))
+cat("\n")
+#cat("mean diff between validation$cnt and training$cnt", mean(validation$cnt - train$cnt))
+```
+
+```{r}
+ggplot(data = test, aes(x = Index)) +
+  geom_line(aes(y = Registered, color = "Registered")) + 
+  geom_line(aes(y = Prediction, color="Prediction"), linetype="twodash") +  
+  scale_color_manual(name = element_blank(), labels = c("Registered","Prediction"),
+                     values = c("darkred", "steelblue")) + labs(y = "") + 
+  ggtitle("Validation")
+```
+
+```{r}
+
+```
+

@@ -1,0 +1,209 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(car)
+library(dplyr)
+library(ggplot2)
+library(hrbrthemes)
+library(GGally)
+library(gridExtra)
+library(nlme)
+library(glmnet)
+```
+
+
+```{r}
+daydata <- read.csv("/Users/bach_nguyen/MA 575/Labs/Project/Data/day.csv",header=TRUE)
+df = data.frame(daydata)
+df[df==-200]<-NA
+df <- na.omit(df)
+#df = df[-c(239,266, 328,22),] #there are high leverage, will need reasons to justify removing
+#df = df[-c(22),]
+train = df[df$yr == '0',]
+validation = df[df$yr == '1',]
+attach(train)
+```
+
+```{r}
+m <-  lm(cnt~ temp + I(temp^2)+ I(temp^3) + windspeed + as.factor(weathersit) + as.factor(season))
+summary(m)
+```
+
+```{r}
+m_red <- lm(cnt~ temp + I(temp^2)+ I(temp^3) + windspeed + as.factor(weathersit) + as.factor(season) )
+m_full <- lm(cnt~ temp + I(temp^2)+ I(temp^3) + windspeed + as.factor(weathersit) + as.factor(season) + as.factor(season):(I(hum^3)))
+anova(m_red, m_full)
+```
+
+
+
+```{r}
+library(glmnet)
+train$temp_square <- temp^2
+train$temp_cube <- temp^3
+train$hum_square <- hum^2
+train$windspeed_square <- windspeed^2
+df3 <- train %>% mutate_at(c('temp','temp_square','temp_cube', 'windspeed','hum_square','hum','cnt'), ~(scale(.) %>% as.vector))
+x_stand <- data.matrix(df3[, c('temp','temp_square','temp_cube', 'windspeed','hum_square','hum')])
+y_stand <- df3$cnt
+cv_model <- cv.glmnet(x_stand, y_stand, alpha = 1)
+best_lambda <- cv_model$lambda.min
+best_model <- glmnet(x_stand, y_stand, alpha = 1, lambda = best_lambda)
+coef(best_model)
+```
+
+```{r}
+#perform 10-fold cross-validation to find optimal lambda value
+cv_model <- cv.glmnet(x_stand, y_stand, alpha = 1)
+
+#find optimal lambda value that minimizes test MSE
+best_lambda <- cv_model$lambda.min
+best_model <- glmnet(x_stand, y_stand, alpha = 1, lambda = best_lambda)
+coef(best_model)
+```
+
+
+```{r}
+mod <- glmnet(x_stand, y_stand, alpha = 1)
+plot(mod, xvar = "lambda", label = TRUE)
+```
+
+```{r}
+CF <- as.matrix(coef(cv_model, cv_model$lambda.min))
+CF[CF!=0,]
+```
+
+```{r}
+plot(m)
+```
+
+
+```{r}
+m1 <-  lm(cnt~ temp + I(temp^2)+ I(temp^3) + windspeed + as.factor(weathersit) + as.factor(season) )
+summary(m1)
+plot(m1)
+```
+
+
+```{r}
+start <- mean(cnt[mnth == seq(from = 1, to = 5, by =1)])
+#start <- mean(cnt[mnth == c(1,2,3,4,5)])
+end <- mean(cnt[mnth == seq(from=6, to =12, by = 1)])
+#end <- mean(cnt[mnth == c(6,7,8,9,10,11,12)])
+growth<-end/start
+cat("annual rate is: ", growth)
+```
+
+```{r}
+new_data <- data.frame(instant=validation$instant,temp=validation$temp, windspeed =validation$windspeed,hum=validation$hum, season =validation$season, weathersit=validation$weathersit, workingday=validation$workingday, mnth= validation$mnth, holiday = validation$holiday, weekday=validation$weekday, yr=validation$yr)
+
+
+output_cnt <- predict(m,se.fit = TRUE, newdata = new_data)
+
+# Create data frame with validation observation and prediction
+test = data.frame(validation$cnt,output_cnt$fit*growth, 1:length(output_cnt$fit));
+colnames(test)[1] = "Cnt"
+colnames(test)[2] = "Prediction"
+colnames(test)[3] = "Index"
+```
+
+```{r}
+#Calculate MSE
+# Residuals for training data
+ResMLS <- resid(m)
+
+# Mean Square Error for training data
+cat("MSE for training:", mean((ResMLS)^2))
+cat("\n")
+cat("RMSE for training:", sqrt(mean((ResMLS)^2)))
+
+cat("\n")
+cat("\n")
+
+#Mean Square Error for validation (year: 2012)
+ResMLSValidation <- validation$cnt - output_cnt$fit*growth
+cat("MSE for validation:", mean((ResMLSValidation)^2))
+cat("\n")
+cat("RMSE for validation:", sqrt(mean((ResMLSValidation)^2)))
+cat("\n")
+```
+
+```{r}
+cat("Relative MSE of training: ",mean((ResMLS)^2) / mean((m$fitted.values)^2),"\n" )
+cat("Relative MSE of validation: ",mean((ResMLSValidation)^2) / mean((validation$cnt)^2),"\n") 
+```
+
+```{r}
+ggplot(data = test, aes(x = Index)) +
+  geom_line(aes(y = Cnt, color = "Cnt")) + 
+  geom_line(aes(y = Prediction, color="Prediction"), linetype="twodash") +  
+  scale_color_manual(name = element_blank(), labels = c("Cnt","Prediction"),
+                     values = c("coral2", "darkcyan")) + labs(y = "") + 
+  ggtitle("Validation")
+```
+
+```{r}
+test2 = test[100:200,]
+
+# Plot GroundCO vs Prediction for Validation Data Set 
+ggplot(data = test2, aes(x = Index)) +
+  geom_line(aes(y = Cnt, color = "Cnt")) + 
+  geom_line(aes(y = Prediction, color="Prediction"), linetype="twodash") +  
+  scale_color_manual(name = element_blank(), labels = c("Cnt","Prediction"),
+                     values = c("coral2", "darkcyan")) + labs(y = "") +
+  ggtitle("Validation")
+```
+
+```{r}
+train$temp_square <- temp^2
+train$temp_cube <- temp^3
+data <- data.frame(cnt, temp,temp^2, temp^3)
+colnames(data) <- make.names(c("Total_Rents", "Temp", "Temp_Square","Temp_Cube"))
+ggpairs(data,
+        upper = list(continuous = wrap("points", alpha = 0.3, size=0.1, colour = 'maroon' )),
+        lower = list(continuous = wrap('cor', size = 4, colour = 'royalblue')),
+        diag = list(continuous = wrap('densityDiag',size = 0.7, colour = "maroon"))
+)
+
+```
+
+
+```{r}
+library(RColorBrewer)
+data <- data.frame(cnt,temp,atemp,windspeed,hum)
+colnames(data) <- make.names(c("Total_Rents", "Temp", "Feel_Temp","Windspped","Humidity"))
+ggpairs(data,
+        upper = list(continuous = wrap("points", alpha = 0.3, size=0.1, colour = 'maroon' )),
+        lower = list(continuous = wrap('cor', size = 4, colour = 'royalblue')),
+        diag = list(continuous = wrap('densityDiag',size = 0.7, colour = "maroon"))
+)
+```
+
+
+```{r}
+cor(cnt, hum)
+```
+
+
+```{r}
+par(mfrow=c(1,2))
+avPlot(m,variable=hum,ask=FALSE, main="")
+avPlot(m,variable=I(hum^2),ask=FALSE, main="")
+```
+
+```{r}
+#par(mfrow=c(2,2))
+boxplot(hum~as.factor(season),ylab="Cnt", xlab="hum", names = c('spring', 'summer', 'fall', 'winter') )
+#boxplot(hum^2~as.factor(season),ylab="Cnt", xlab="hum^2", names = c('spring', 'summer', 'fall', 'winter') )
+#boxplot(hum^3~as.factor(season),ylab="Cnt", xlab="hum^3", names = c('spring', 'summer', 'fall', 'winter') )
+```
+
+```{r}
+m_red = lm(cnt~hum)
+m_full = lm(cnt~as.factor(season):hum)
+anova(m_red, m_full)
+```
+

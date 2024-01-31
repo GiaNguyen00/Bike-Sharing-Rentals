@@ -1,0 +1,164 @@
+---
+title: "deliverable4"
+output: html_document
+date: "2023-03-30"
+---
+
+```{r}
+library(car)
+library(dplyr)
+library(ggplot2)
+library(hrbrthemes)
+library(GGally)
+library(gridExtra)
+```
+
+```{r}
+daydata <- read.csv("/Users/bach_nguyen/MA 575/Labs/Project/Data/day.csv",header=TRUE)
+df = data.frame(daydata)
+train = df[df$yr == '0',]
+attach(train)
+```
+
+Matrix plot:
+
+```{r}
+data <- data.frame(casual, temp, atemp, hum, windspeed)
+ggpairs(data, upper = list(continuous = wrap("points", alpha = 0.3,    size=0.1)),
+lower = list(continuous = wrap('cor', size = 4)))
+```
+
+```{r}
+season_f = as.factor(season)
+workingday_f = as.factor(workingday)
+holiday_f = as.factor(holiday)
+weekday_f = as.factor(weekday)
+weathersit_f = as.factor(weathersit)
+par(mfrow=c(2,2))
+boxplot(casual~season_f,ylab="casual", xlab="season")
+boxplot(casual~workingday_f,ylab="casual", xlab="workingday")
+boxplot(casual~weathersit_f,ylab="casual", xlab="weathersit")
+boxplot(casual~weekday_f,ylab="casual", xlab="weekday")
+```
+
+\--\> Holiday or non-working day get higher means.
+
+```{r}
+library(MASS)
+pairs(log(casual)~log(temp)+log(atemp) + log(hum) + log(windspeed),data=daydata,gap=0.4,cex.labels=1.5)
+```
+
+First try: try to plug all variables in
+
+```{r}
+m1_full.mls = lm(casual ~ temp +atemp + hum + windspeed + season_f + workingday_f + weathersit_f + weekday_f)
+summary(m1_full.mls)
+```
+
+```{r}
+vif(m1_full.mls)
+```
+
+From the multi collinearity plot, we can see temp and atemp are highly correlated.
+
+\-\-\-\-\-\-\-\-\-\-\-\--
+
+Second try: delete atemp, and holiday_f.
+
+```{r}
+ggplot(data = train) + geom_point(data=train, aes(x=1:nrow(data), y=casual, color=workingday_f)) 
+```
+
+-\>This plot shows that non-working day yields more bike rents.
+
+```{r}
+m2_full.mls = lm(casual ~ temp + hum + windspeed + season_f +weekday_f + workingday_f:(temp + hum + windspeed + + season_f) )
+summary(m2_full.mls)
+```
+
+```{r}
+m2_reduced.mls = lm(casual ~ temp + hum + windspeed )
+summary(m2_reduced.mls)
+```
+
+```{r}
+anova(m2_reduced.mls, m2_full.mls)
+```
+
+-\> Should use the full model with all the categorical variables.
+
+\-\-\-\-\-\-\-\-\-\-\--
+
+Begin the diagnostic:
+
+```{r}
+StanRes <- rstandard(m2_full.mls)
+par(mfrow=c(3,3))
+plot(temp,StanRes, ylab="Standardized Residuals")
+plot(hum,StanRes, ylab="Standardized Residuals")
+plot(windspeed,StanRes, ylab="Standardized Residuals")
+boxplot(StanRes~season_f,ylab="Standardized Residuals",xlab="season_f")
+boxplot(StanRes~workingday_f,ylab="Standardized Residuals",xlab="workingday_f")
+boxplot(StanRes~weathersit_f,ylab="Standardized Residuals",xlab="weathersit_f")
+boxplot(StanRes~weekday_f,ylab="Standardized Residuals",xlab="weekday_f")
+```
+
+```{r}
+par(mfrow=c(1,1))
+plot(m2_full.mls$fitted.values,casual,xlab="Fitted Values")
+abline(lsfit(m2_full.mls$fitted.values,casual))
+plot(m2_full.mls$fitted.values,log(casual),xlab="Fitted Values")
+abline(lsfit(m2_full.mls$fitted.values,log(casual)))
+```
+
+```{r}
+par(mfrow=c(2,2))
+plot(m2_full.mls)
+abline(v=2*8/72,lty=2)
+```
+
+-\> need to check point 442,551,725
+
+```{r}
+vif(m2_full.mls)
+```
+
+```{r}
+
+par(mfrow=c(2,2))
+mmp(m2_full.mls,temp)
+mmp(m2_full.mls,hum)
+mmp(m2_full.mls,windspeed)
+mmp(m2_full.mls,m2_full.mls$fitted.values,xlab="Fitted Values")
+```
+
+```{r}
+library(car)
+par(mfrow=c(2,4))
+avPlot(m2_full.mls,variable=temp,ask=FALSE, main="")
+avPlot(m2_full.mls,variable=hum,ask=FALSE, main="")
+avPlot(m2_full.mls,variable=windspeed,ask=FALSE, main="")
+
+```
+
+```{r}
+avPlots(m2_full.mls,variable=season_f,ask=FALSE, main="")
+avPlots(m2_full.mls,variable=workingday_f,ask=FALSE, main="")
+avPlots(m2_full.mls,variable=weathersit_f,ask=FALSE, main="")
+```
+
+\-\-\-\-\-\-\-\-\-\-\-\-\--
+
+Validation:
+
+```{r}
+validation = df[df$yr == 1,]
+```
+
+```{r}
+# Residuals for training data
+ResMLS <- resid(m2_full.mls)
+
+# Mean Square Error for training data
+mean((ResMLS)^2)
+```

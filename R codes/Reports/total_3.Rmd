@@ -1,0 +1,70 @@
+---
+title: "total_3"
+output: html_document
+date: "2023-04-07"
+---
+
+```{r}
+library(car)
+library(dplyr)
+library(ggplot2)
+library(hrbrthemes)
+library(GGally)
+library(gridExtra)
+```
+
+```{r}
+daydata <- read.csv("/Users/bach_nguyen/MA 575/Labs/Project/Data/day.csv",header=TRUE)
+df = data.frame(daydata)
+train = df[df$yr == '0',]
+validation = df[df$yr == '1',]
+attach(train)
+```
+
+```{r}
+m = lm(cnt ~ temp + I(temp^2) + hum + windspeed + as.factor(season)+ as.factor(weathersit)+ as.factor(workingday))
+summary(m)
+```
+
+```{r}
+m = lm(cnt ~ temp + I(temp^2) +windspeed + as.factor(season)+ as.factor(weathersit)+as.factor(workingday) + casual + registered)
+summary(m)
+```
+
+```{r}
+new_data <- data.frame(temp=validation$temp, windspeed =validation$windspeed, season =validation$season, weathersit=validation$weathersit, workingday=validation$workingday, casual = validation$casual, registered = validation$registered)
+
+output <- predict(m,se.fit = TRUE, newdata = new_data)
+
+# Create data frame with validation observation and prediction
+test = data.frame(validation$cnt,output$fit, 1:length(output$fit));
+colnames(test)[1] = "Cnt"
+colnames(test)[2] = "Prediction"
+colnames(test)[3] = "Index"
+ggplot(data = test, aes(x = Index)) +
+  geom_line(aes(y = Cnt, color = "Cnt")) + 
+  geom_line(aes(y = Prediction, color="Prediction"), linetype="twodash") +  
+  scale_color_manual(name = element_blank(), labels = c("Cnt","Prediction"),
+                     values = c("darkred", "steelblue")) + labs(y = "") + 
+  ggtitle("Validation")
+```
+
+```{r}
+library(nlme)
+m1 <- gls(cnt~ temp  + I(temp^2) + windspeed+ as.factor(weathersit) + as.factor(season),correlation=corAR1(form=~instant),method="ML")
+summary(m1)
+```
+
+```{r}
+m.gls <- gls(cnt ~temp+ I(temp^2)  + windspeed + as.factor(season) + as.factor(weathersit), 
+          correlation=corAR1(form=~instant), method="ML")
+summary(m.gls)
+```
+
+```{r}
+train$cnt_lag1 <- lag(train$cnt, 1)
+train$cnt_lag7 <- lag(train$cnt, 7)
+train <- train[complete.cases(train), ]
+model <- lm(cnt ~ cnt_lag1 + cnt_lag7+ temp+ I(temp^2)+ windspeed+ as.factor(weathersit) + as.factor(season), data = train)
+summary(model)
+```

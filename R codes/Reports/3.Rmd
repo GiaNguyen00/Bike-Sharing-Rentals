@@ -1,0 +1,96 @@
+---
+title: "Deliverable 3"
+output: html_document
+date: "2023-03-17"
+---
+
+Heading and Motivation ...
+
+```{r}
+library(carData)
+library(car)
+library(ggplot2)
+library(hrbrthemes)
+library(GGally)
+```
+
+```{r}
+day_data <- read.csv("/Users/bach_nguyen/MA 575/Labs/Project/Data/day.csv",header=TRUE)
+attach(day_data)
+```
+
+```{r}
+day_casual = as.numeric(as.character(day_data$casual))
+day_season = as.numeric(as.character(day_data$season))
+day_holiday = as.numeric(as.character(day_data$holiday))
+day_weekday = as.numeric(as.character(day_data$weekday))
+day_workingday = as.numeric(as.character(day_data$workingday))
+day_weathersit = as.numeric(as.character(day_data$weathersit))
+day_temp = as.numeric(as.character(day_data$temp))
+day_atemp = as.numeric(as.character(day_data$atemp))
+day_hum = as.numeric(as.character(day_data$hum))
+day_windspeed = as.numeric(as.character(day_data$windspeed))
+```
+
+```{r}
+#Plot scatterplot of casual vs season
+data <- data.frame(day_casual, day_season)
+ggplot(data = data, aes(x=factor(day_season), y=day_casual)) +  geom_boxplot(fill='green') + xlab("Season") + ylab("Casual Counts")
+```
+
+Pick day.csv:
+
+```{r}
+# Perform Multiple Linear Regression between CNT vs  Casual, ...
+weathersit_dummy<-factor(day_weathersit, c(1,2,3,4), labels=c('A','B','C','D'))
+m.mls <- lm(casual ~ temp + atemp + hum + windspeed)
+
+# Examine R output for MLS
+summary(m.mls)
+```
+
+```{r}
+# Perform Multiple Linear Regression between CNT vs  Casual, ...
+weathersit<-factor(day_weathersit, c(1,2,3,4), labels=c('Clear','Mist','Light Snow','Heavy Rain'))
+m.mls <- lm(casual ~ temp + atemp + hum + windspeed + weathersit + weathersit:temp + weathersit:atemp + weathersit:hum + weathersit:windspeed)
+
+# Examine R output for MLS
+summary(m.mls)
+```
+
+\-\-\-\-\-\-\-\-\-\-\-\--
+
+```{r}
+# Perform Multiple Linear Regression between Casual vs ...
+weathersit<-as.factor(day_weathersit)
+workingday <- as.factor(day_workingday)
+m.mls <- lm(casual ~ temp + atemp + hum + windspeed + weathersit + weathersit:temp + weathersit:atemp + weathersit:hum + weathersit:windspeed + workingday + workingday:temp + workingday:atemp + workingday:hum + workingday:windspeed)
+
+# Examine R output for MLS
+summary(m.mls)
+```
+
+```{r}
+#Scatter plot matrix 
+data <- data.frame(casual, temp, atemp, hum, windspeed)
+ggpairs(data, upper = list(continuous = wrap("points", alpha = 0.3,    size=0.1)),
+lower = list(continuous = wrap('cor', size = 4)))
+```
+
+\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\--
+
+day_temp and day_atemp not significant
+
+```{r}
+#Scatter plot matrix 
+data <- data.frame(day_casual, day_temp, day_atemp,day_hum,day_windspeed)
+ggpairs(data, upper = list(continuous = wrap("points", alpha = 0.3,    size=0.1)),
+lower = list(continuous = wrap('cor', size = 4)))
+```
+
+```{r}
+#Scatter plot matrix 
+data <- data.frame(day_casual, day_season, day_holiday, day_weathersit, day_atemp,day_windspeed)
+ggpairs(data, upper = list(continuous = wrap("points", alpha = 0.3,    size=0.1)),
+lower = list(continuous = wrap('cor', size = 4)))
+```

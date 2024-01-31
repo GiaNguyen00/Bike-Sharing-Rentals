@@ -1,0 +1,68 @@
+---
+title: "diagnostics"
+output: html_document
+date: "2023-04-12"
+---
+
+```{r}
+library(car)
+library(dplyr)
+library(ggplot2)
+library(hrbrthemes)
+library(GGally)
+library(gridExtra)
+library(nlme)
+library(glmnet)
+```
+
+```{r}
+daydata <- read.csv("/Users/bach_nguyen/MA 575/Labs/Project/Data/day.csv",header=TRUE)
+df = data.frame(daydata)
+df[df==-200]<-NA
+df <- na.omit(df)
+#df = df[-c(239,266, 328,22),]
+df = df[-c(22),]
+train = df[df$yr == '0',]
+validation = df[df$yr == '1',]
+attach(train)
+```
+
+```{r}
+m <-  lm(cnt~temp + I(temp^2)+ I(temp^3) + windspeed + as.factor(season) + as.factor(weathersit))
+summary(m)
+```
+
+
+```{r}
+StanRes <- rstandard(m)
+par(mfrow=c(2,3))
+plot(temp,StanRes, ylab="Standardized Residuals")
+plot(hum,StanRes, ylab="Standardized Residuals")
+plot(windspeed,StanRes, ylab="Standardized Residuals")
+boxplot(StanRes~as.factor(season),ylab="Standardized Residuals",xlab="season")
+boxplot(StanRes~as.factor(weathersit),ylab="Standardized Residuals",xlab="weathersit")
+plot(m$fitted.values, StanRes, ylab="Standardized Residuals", xlab="Fitted values")
+```
+```{r}
+par(mfrow=c(2,2))
+plot(m)
+abline(v=2*8/72,lty=2)
+```
+```{r}
+par(mfrow=c(2,4))
+mmp(m,temp)
+mmp(m,hum)
+mmp(m,windspeed)
+mmp(m,I(temp^2))
+mmp(m,I(temp^3))
+mmp(m,I(hum^2))
+mmp(m,m$fitted.values,xlab="Fitted Values")
+```
+```{r}
+par(mfrow=c(2,2))
+avPlot(m,variable=temp,ask=FALSE, main="")
+avPlot(m,variable=windspeed,ask=FALSE, main="")
+avPlot(m,variable=I(temp^2),ask=FALSE, main="")
+avPlot(m,variable=I(temp^3),ask=FALSE, main="")
+```
+

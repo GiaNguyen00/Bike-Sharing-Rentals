@@ -1,0 +1,67 @@
+---
+title: "total_11"
+output: html_notebook
+---
+
+```{r}
+library(car)
+library(dplyr)
+library(ggplot2)
+library(hrbrthemes)
+library(GGally)
+library(gridExtra)
+library(nlme)
+```
+
+```{r}
+daydata <- read.csv("/Users/bach_nguyen/MA 575/Labs/Project/Data/day.csv",header=TRUE)
+df = data.frame(daydata)
+df[df==-200]<-NA
+df <- na.omit(df)
+df = df[-c(239,266, 328,22),] #there are high leverage, will need reasons to justify removing
+train = df[df$yr == '0',]
+validation = df[df$yr == '1',]
+attach(validation)
+```
+
+```{r}
+m <-  lm(cnt~temp + I(temp^2)+ I(temp^3) + windspeed + as.factor(season) + as.factor(weathersit))
+summary(m)
+detach(validation)
+```
+
+```{r}
+attach(train)
+m1 <-  lm(cnt~temp + I(temp^2)+ I(temp^3) + windspeed + as.factor(season) + as.factor(weathersit))
+summary(m1)
+detach(train)
+```
+
+```{r}
+cat ("1: ", mean(train$cnt[train$mnth==1]), "\n")
+cat ("2: ", mean(train$cnt[train$mnth==2]) , "\n")
+cat ("3: ", mean(train$cnt[train$mnth==3]) , "\n")
+cat ("4: ", mean(train$cnt[train$mnth==4]) , "\n")
+cat ("5: ", mean(train$cnt[train$mnth==5]) , "\n")
+cat ("6: ", mean(train$cnt[train$mnth==6]) , "\n")
+cat ("7: ", mean(train$cnt[train$mnth==7]) , "\n")
+cat ("8: ", mean(train$cnt[train$mnth==8]) , "\n")
+cat ("9: ", mean(train$cnt[train$mnth==9]) , "\n")
+cat ("10: ", mean(train$cnt[train$mnth==10]) , "\n")
+cat ("11: ", mean(train$cnt[train$mnth==11]) , "\n")
+cat ("12: ", mean(train$cnt[train$mnth==12]) , "\n")
+```
+```{r}
+cat("aver from 1 to 5: ", mean(train$cnt[train$mnth==c(1,2,3,4,5)]),"\n" )
+cat("aver from 6 to 12: ", mean(train$cnt[train$mnth==c(6,7,8,9,10,11,12)]) )
+#sum(train$cnt[train$mnth==12]) /  sum(train$cnt[train$mnth==6]) 
+#sum(train$cnt[train$mnth==5]) /  sum(train$cnt[train$mnth==1]) 
+
+```
+
+```{r}
+max <- mean(train$registered[train$mnth == 6])
+min <- mean(train$registered[train$mnth == 1])
+cat("rate is: ", (max+min)/2)
+```
+

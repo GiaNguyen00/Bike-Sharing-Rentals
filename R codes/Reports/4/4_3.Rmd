@@ -1,0 +1,213 @@
+---
+title: "4_3"
+output:
+  pdf_document: default
+  html_document: default
+date: "2023-03-30"
+---
+
+```{r}
+library(car)
+library(dplyr)
+library(ggplot2)
+library(hrbrthemes)
+library(GGally)
+library(gridExtra)
+```
+
+1.  Model selection
+
+```{r}
+daydata <- read.csv("/Users/bach_nguyen/MA 575/Labs/Project/Data/day.csv",header=TRUE)
+df = data.frame(daydata)
+train = df[df$yr == '0',]
+validation = df[df$yr == '1',]
+attach(train)
+```
+
+```{r}
+data <- data.frame(casual, temp, atemp, hum, windspeed)
+ggpairs(data, upper = list(continuous = wrap("points", alpha = 0.3,    size=0.1)),
+lower = list(continuous = wrap('cor', size = 4)))
+```
+
+```{r}
+par(mfrow=c(2,2))
+boxplot(casual~as.factor(season),ylab="casual", xlab="season")
+boxplot(casual~as.factor(workingday),ylab="casual", xlab="workingday")
+boxplot(casual~as.factor(weathersit),ylab="casual", xlab="weathersit")
+boxplot(casual~as.factor(weekday),ylab="casual", xlab="weekday")
+```
+
+first try:
+
+```{r}
+m1 = lm(casual ~ temp + windspeed)
+summary(m1)
+```
+
+```{r}
+vif(m1)
+```
+
+-\> From the multi collinearity plot, we can see temp and atemp are highly correlated. And temp is more significant, keep temp
+
+```{r}
+summary(aov(casual~season, train))
+```
+
+-\> season is significant to add to the model
+
+```{r}
+summary(aov(casual~workingday, train))
+```
+
+-\> workingday is significant to add to the model
+
+```{r}
+summary(aov(casual~weekday, train))
+```
+
+-\> weekday is not significant
+
+```{r}
+summary(aov(casual~holiday, train))
+```
+
+-\>holiday is not significant
+
+from the boxplot and below scatter plot, non-working days have higher bike rents.
+
+```{r}
+ggplot(data = train) + geom_point(data=train, aes(x=1:nrow(data), y=casual, color=as.factor(workingday))) 
+```
+
+```{r}
+plot(m1$fitted.values,casual,xlab="Fitted Values")
+abline(lsfit(m1$fitted.values,casual))
+```
+
+-\> Use log(casual)
+
+```{r}
+plot(m1$fitted.values,log(casual),xlab="Fitted Values")
+abline(lsfit(m1$fitted.values,log(casual)))
+```
+
+-\> fit better
+
+2.  Choosing MLR
+
+```{r}
+m = lm(log(casual) ~ temp + I(temp^2) + windspeed + as.factor(season)+ as.factor(weathersit)+ as.factor(workingday))
+summary(m)
+```
+
+```{r}
+m1_with_log <- lm(log(casual) ~ temp + hum + windspeed)
+anova(m1_with_log, m)
+```
+
+-\> there is statistically evidence to use full model.
+
+Begin the diagnostics:
+
+```{r}
+StanRes <- rstandard(m)
+par(mfrow=c(3,3))
+plot(temp,StanRes, ylab="Standardized Residuals")
+plot(hum,StanRes, ylab="Standardized Residuals")
+plot(windspeed,StanRes, ylab="Standardized Residuals")
+boxplot(StanRes~as.factor(season),ylab="Standardized Residuals",xlab="season")
+boxplot(StanRes~as.factor(workingday),ylab="Standardized Residuals",xlab="workingday")
+boxplot(StanRes~as.factor(weathersit),ylab="Standardized Residuals",xlab="weathersit")
+```
+
+```{r}
+plot(m$fitted.values,log(casual),xlab="Fitted Values")
+abline(lsfit(m$fitted.values,log(casual)))
+```
+
+```{r}
+par(mfrow=c(2,2))
+plot(m)
+abline(v=2*8/72,lty=2)
+```
+
+```{r}
+vif(m)
+```
+
+```{r}
+par(mfrow=c(2,2))
+mmp(m,temp)
+mmp(m,hum)
+mmp(m,windspeed)
+mmp(m,m$fitted.values,xlab="Fitted Values")
+```
+
+```{r}
+library(car)
+par(mfrow=c(2,2))
+avPlot(m,variable=temp,ask=FALSE, main="")
+avPlot(m,variable=hum,ask=FALSE, main="")
+avPlot(m,variable=windspeed,ask=FALSE, main="")
+```
+
+\-\-\-\-\-\-\-\-\-\-\-\-\-\--
+
+Validation
+
+```{r}
+# Residuals for training data
+ResMLS <- resid(m)
+
+# Mean Square Error for training data
+mean((ResMLS)^2)
+```
+
+```{r}
+# Mean Square Error for validation data
+
+# Residuals for validation data
+#If the logical se. fit is TRUE , standard errors of the predictions are also calculated.
+new_data <- data.frame(temp=validation$temp,hum=validation$hum, windspeed =validation$windspeed, season =validation$season, weathersit=validation$weathersit, workingday= validation$workingday)
+
+output <- predict(m,se.fit = TRUE, newdata = new_data)
+
+ResMLSValidation <- log(validation$casual) - output$fit
+
+mean((ResMLSValidation)^2)
+
+#mean((output$residual.scale)^2)
+```
+
+```{r}
+# Relative Mean Square Error for validation data
+mean((ResMLSValidation)^2) / mean((validation$casual)^2)
+
+#mean((output$residual.scale)^2) / mean((validation$casual)^2)
+```
+
+```{r}
+plot(output$fit,validation$casual,xlab="prediction")
+abline(lsfit(output$fit,validation$casual))
+```
+
+```{r}
+# Create data frame with validation observation and prediction
+test = data.frame(validation$casual,exp(output$fit), 1:length(output$fit));
+colnames(test)[1] = "Casual"
+colnames(test)[2] = "Prediction"
+colnames(test)[3] = "Index"
+
+```
+
+```{r}
+ggplot(data = test, aes(x = Index)) +
+  geom_line(aes(y = Casual, color = "Casual")) + 
+  geom_line(aes(y = Prediction, color="Prediction"), linetype="twodash") +  
+  scale_color_manual(name = element_blank(), labels = c("Casual","Prediction"),
+                     values = c("darkred", "steelblue")) + labs(y = "") + 
+  ggtitle("Validation")
+```

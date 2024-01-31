@@ -1,0 +1,106 @@
+---
+title: "deliverable4_2"
+output: html_document
+date: "2023-03-30"
+---
+
+```{r}
+library(car)
+library(dplyr)
+library(ggplot2)
+library(hrbrthemes)
+library(GGally)
+library(gridExtra)
+
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2) # for data visulisation
+library(plotly) # for plot rendering
+library(dplyr) # for select statement
+library(grid)
+library(gridExtra)
+library(date) # for handling dates
+library(lubridate)
+library(pacman)
+library(forecast)
+library(tidyr)
+```
+
+```{r}
+daydata <- read.csv("/Users/bach_nguyen/MA 575/Labs/Project/Data/day.csv",header=TRUE)
+df = data.frame(daydata)
+train = df[df$yr == '0',]
+validation = df[df$yr == '1',]
+attach(train)
+```
+
+```{r}
+season_f = as.factor(season)
+workingday_f = as.factor(workingday)
+holiday_f = as.factor(holiday)
+weekday_f = as.factor(weekday)
+weathersit_f = as.factor(weathersit)
+m = lm(log(casual) ~ atemp + hum + windspeed + as.factor(season)+ as.factor(weathersit)+ as.factor(workingday))
+summary(m)
+```
+
+```{r}
+# Residuals for training data
+ResMLS <- resid(m)
+
+# Mean Square Error for training data
+mean((ResMLS)^2)
+
+```
+
+```{r}
+plot(m$fitted.values,casual,xlab="Fitted Values")
+abline(lsfit(m$fitted.values,casual))
+```
+
+\-\-\-\-\-\-\-\-\-\-\--
+
+Validation
+
+```{r}
+# Mean Square Error for validation data
+
+# Residuals for validation data
+#If the logical se. fit is TRUE , standard errors of the predictions are also calculated.
+new_data <- data.frame(atemp=validation$atemp, hum=validation$hum, windspeed =validation$windspeed, season =validation$season, weathersit=validation$weathersit, workingday= validation$workingday)
+
+output <- predict(m,se.fit = TRUE, newdata = new_data)
+
+ResMLSValidation <- validation$casual - output$fit
+
+mean((output$residual.scale)^2)
+```
+
+```{r}
+plot(output$fit,validation$casual,xlab="prediction")
+abline(lsfit(output$fit,validation$casual))
+```
+
+```{r}
+timeseries_m <- lm(log(casual) ~ lag(log(casual)) + 
+              lag(log(casual),2) +
+              lag(log(casual),3) +
+              lag(log(casual),4) +
+              lag(log(casual),5) + lag(log(casual),6), data = train)
+
+summary(timeseries_m)
+```
+
+```{r}
+timeseries_m <- lm(log(casual) ~ lag(casual) + 
+              lag(casual,2) +
+              lag(casual,3) +
+              lag(casual,4) +
+              lag(casual,5) + lag(casual,6), data = daydata)
+
+
+daydata %>% transmute(dteday,casual,prediction = c(0,0,0,0,0,0, predict(timeseries_m))) %>%
+  gather("Type","Value",-dteday) %>%
+  ggplot(aes(x = dteday, y = Value, color = Type)) + 
+  labs(x='Date')+
+  geom_point()
+```

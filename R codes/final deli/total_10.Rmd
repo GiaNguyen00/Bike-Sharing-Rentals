@@ -1,0 +1,81 @@
+---
+title: "total_10"
+output: html_document
+date: "2023-04-13"
+---
+
+```{r}
+library(car)
+library(dplyr)
+library(ggplot2)
+library(hrbrthemes)
+library(GGally)
+library(gridExtra)
+library(nlme)
+```
+
+```{r}
+daydata <- read.csv("/Users/bach_nguyen/MA 575/Labs/Project/Data/day.csv",header=TRUE)
+df = data.frame(daydata)
+df[df==-200]<-NA
+df <- na.omit(df)
+df = df[-c(239,266, 328,22),] #there are high leverage, will need reasons to justify removing
+train = df[df$yr == '0',]
+validation = df[df$yr == '1',]
+attach(train)
+```
+
+```{r}
+#create scatterplot of x1 vs. y1
+plot(1:nrow(train),casual , col='red', pch=19, cex=1.3,
+     xlab='index', ylab='Casual', main='Casual')
+```
+
+
+```{r}
+plot(mnth,casual , col='red', pch=19, cex=1.3,
+     xlab='index', ylab='Casual', main='Casual')
+```
+
+
+
+```{r}
+plot(1:nrow(train), registered, col='red', pch=19, cex=1.3,
+     xlab='index', ylab='Registered', main='Registered')
+```
+```{r}
+plot(mnth, registered, col='red', pch=19, cex=1.3,
+     xlab='index', ylab='Registered', main='Registered')
+```
+```{r}
+
+pacf(x=train$registered, lag.max=10 , plot=TRUE)
+```
+```{r}
+train$lag_3 <- dplyr::lag(train$registered, n=3)
+#train2 = train[-c(1,2,3),]
+m <-  lm(registered~  lag(registered, 3))
+summary(m)
+```
+
+```{r}
+#install 'fitdistrplus' package if not already installed
+#install.packages('fitdistrplus')
+
+#load package
+library(fitdistrplus)
+
+#generate 50 random values that follow a gamma distribution with shape parameter = 3
+#and shape parameter = 10 combined with some gaussian noise
+#z <- rgamma(50, 3, 10) + rnorm(50, 0, .02)
+
+#fit our dataset to a gamma distribution using mle
+fit <- fitdist(train$registered, distr = "gamma", method = "mle")
+
+#view the summary of the fit
+summary(fit)
+
+#produce plots to visualize the fit
+plot(fit)
+```
+

@@ -1,0 +1,71 @@
+---
+title: "total_6"
+output: html_document
+date: "2023-04-10"
+---
+
+```{r}
+library(car)
+library(dplyr)
+library(ggplot2)
+library(hrbrthemes)
+library(GGally)
+library(gridExtra)
+library(nlme)
+```
+
+```{r}
+daydata <- read.csv("/Users/bach_nguyen/MA 575/Labs/Project/Data/day.csv",header=TRUE)
+df = data.frame(daydata)
+set.seed(1)
+#sample <- sample(c(TRUE, FALSE), nrow(iris), replace=TRUE, prob=c(0.7,0.3))
+#train  <- daydata[sample, ]
+#validation   <- daydata[!sample, ]
+#df = subset(df, season == 2)
+train = df[df$yr == '0',]
+validation = df[df$yr == '1',]
+train2 <- train[-c(18,27,239,359,328),]
+attach(train2)
+```
+
+```{r}
+
+m1 <- lm(cnt ~  temp+ I(temp^2) + windspeed + as.factor(season) +as.factor(weathersit) )
+
+```
+
+```{r}
+m <- lm(cnt ~  temp+ I(temp^2)+I(temp^3)+ windspeed + as.factor(season) +as.factor(weathersit))
+summary(m)
+```
+
+```{r}
+new_data <- data.frame(instant=validation$instant,temp=validation$temp, windspeed =validation$windspeed,hum=validation$hum, season =validation$season, weathersit=validation$weathersit, workingday=validation$workingday, mnth= validation$mnth, holiday = validation$holiday, weekday=validation$weekday)
+
+#output_c <- predict(m_c,se.fit = TRUE, newdata = new_data)
+
+#output_r <- predict(m_r,se.fit = TRUE, newdata = new_data)
+
+output_cnt <- predict(m,se.fit = TRUE, newdata = new_data)
+```
+
+```{r}
+#Calculate MSE
+# Residuals for training data
+ResMLS <- resid(m)
+
+# Mean Square Error for training data
+cat("MSE for training:", mean((ResMLS)^2))
+cat("\n")
+cat("RMSE for training:", sqrt(mean((ResMLS)^2)))
+
+cat("\n")
+cat("\n")
+
+#Mean Square Error for validation (year: 2012)
+ResMLSValidation <- validation$cnt - output_cnt$fit
+cat("MSE for validation:", mean((ResMLSValidation)^2))
+cat("\n")
+cat("RMSE for validation:", sqrt(mean((ResMLSValidation)^2)))
+cat("\n")
+```

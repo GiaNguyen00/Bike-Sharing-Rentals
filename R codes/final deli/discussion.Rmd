@@ -1,0 +1,118 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+```{r}
+library(car)
+library(dplyr)
+library(ggplot2)
+library(hrbrthemes)
+library(GGally)
+library(gridExtra)
+```
+
+```{r}
+daydata <- read.csv("/Users/bach_nguyen/MA 575/Labs/Project/Data/day.csv",header=TRUE)
+df = data.frame(daydata)
+#df = df[-c(22),]
+train = df[df$yr == '0',]
+validation = df[df$yr == '1',]
+attach(train)
+```
+
+```{r}
+ggplot(train[100:200,], aes(x = instant, y = casual)) +
+    geom_line(colour ='forestgreen') +
+  ggtitle("Casual users every 7-days period")+
+  xlab("Instant") + ylab("Casual Counts") +
+  theme(
+axis.title.x = element_text(color="black", size=20),
+axis.title.y = element_text(color="black", size=20)
+)
+```
+```{r}
+m<-  lm(cnt~ temp + I(temp^2)+ I(temp^3) + windspeed + as.factor(weathersit) + as.factor(season) )
+summary(m)
+```
+
+
+```{r}
+m_c <-  lm(casual~ temp + I(temp^2)+ I(temp^3) + windspeed + as.factor(weathersit) + as.factor(season) )
+summary(m_c)
+```
+
+```{r}
+m_r <-  lm(registered~ temp + I(temp^2)+ I(temp^3) + windspeed + as.factor(weathersit) + as.factor(season) )
+summary(m_r)
+```
+```{r}
+plot(1:nrow(validation), validation$casual, type="l", col="royalblue", pch="o",xlab=("Instant"), ylab="Casual", lty=1)
+#points(1:nrow(train), train$casual, col="red", pch="*")
+lines(1:nrow(train), train$casual, col="maroon",lty=2)
+legend(0,3500,legend=c("2012","2011"), col=c("royalblue","maroon"),
+                                   pch=c("o","*"),lty=c(1,2), ncol=1)
+```
+
+```{r}
+plot(1:nrow(validation), validation$registered, type="l", col="royalblue", pch="o",xlab=("Instant"), ylab="Registered", lty=1)
+#points(1:nrow(train), train$registered, col="red", pch="*")
+lines(1:nrow(train), train$registered, col="maroon",lty=2)
+legend(0,7000,legend=c("2012","2011"), col=c("royalblue","maroon"),
+                                   pch=c("o","*"),lty=c(1,2), ncol=1)
+```
+
+```{r}
+ggplot(train, aes(x = instant, y = casual)) +
+    geom_line(color = 'maroon')+ ggtitle('Casual bike rentals in 2011') +
+    xlab("Instant") + ylab("Casual Counts") +
+  theme(
+axis.title.x = element_text(color="black", size=20),
+axis.title.y = element_text(color="black", size=20)
+)
+```
+```{r}
+ggplot(train, aes(x = instant, y = registered)) +
+    geom_line(color = 'royalblue') + ggtitle('Registered bike rentals in 2011')+
+  xlab("Instant") + ylab("Registered Counts") +
+  theme(
+axis.title.x = element_text(color="black", size=20),
+axis.title.y = element_text(color="black", size=20)
+)
+```
+
+```{r}
+ggplot(train, aes(x = instant, y = cnt)) +
+    geom_line(color = 'forestgreen') + ggtitle('Total bike rentals in 2011')+
+  xlab("Instant") + ylab("Total Counts") +
+  theme(
+axis.title.x = element_text(color="black", size=20),
+axis.title.y = element_text(color="black", size=20)
+)
+```
+
+
+```{r}
+new_data <- data.frame(instant=validation$instant,temp=validation$temp, windspeed =validation$windspeed,hum=validation$hum, season =validation$season, weathersit=validation$weathersit, workingday=validation$workingday, mnth= validation$mnth, holiday = validation$holiday, weekday=validation$weekday, yr=validation$yr, casual=validation$casual, registered=validation$registered)
+
+
+output_c <- predict(m_c,se.fit = TRUE, newdata = new_data)
+output_r <- predict(m_c,se.fit = TRUE, newdata = new_data)
+
+# Create data frame with validation observation and prediction
+test = data.frame(validation$casual,train$casual, 1:length(output_c$fit));
+colnames(test)[1] = "Casual"
+colnames(test)[2] = "Prediction"
+colnames(test)[3] = "Index"
+```
+
+
+
+```{r}
+ggplot(data = test, aes(x = Index)) +
+  geom_line(aes(y = Casual, color = "Casual")) + 
+  geom_line(aes(y = Prediction, color="Prediction"), linetype="twodash") +  
+  scale_color_manual(name = element_blank(), labels = c("Casual","Prediction"),
+                     values = c("coral2", "darkcyan")) + labs(y = "") + 
+  ggtitle("Validation")
+```
+

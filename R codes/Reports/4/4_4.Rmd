@@ -1,0 +1,107 @@
+---
+title: "4_4"
+output: html_document
+date: "2023-03-31"
+---
+
+```{r}
+library(car)
+library(dplyr)
+library(ggplot2)
+library(hrbrthemes)
+library(GGally)
+library(gridExtra)
+```
+
+```{r}
+daydata <- read.csv("/Users/bach_nguyen/MA 575/Labs/Project/Data/day.csv",header=TRUE)
+df = data.frame(daydata)
+train = df[df$yr == '0',]
+validation = df[df$yr == '1',]
+attach(train)
+```
+
+```{r}
+m= lm(log(casual) ~ temp + I(temp^2) + hum + windspeed + as.factor(season)+ as.factor(weathersit)+ as.factor(workingday))
+summary(m)
+```
+
+```{r}
+plot(m)
+```
+
+
+
+```{r}
+plot(m$fitted.values,log(casual),xlab="Fitted Values")
+abline(lsfit(m$fitted.values,log(casual)))
+```
+
+```{r}
+m= lm(casual ~ temp + I(temp^2) + hum + windspeed + as.factor(season)+ as.factor(weathersit)+ as.factor(workingday))
+summary(m)
+# Residuals for training data
+ResMLS <- resid(m)
+
+MSE <- (mean(ResMLS^2))
+sqrt(MSE)
+# Mean Square Error for training data
+sqrt(mean((ResMLS)^2))
+
+#express mean square error in term of rssid stand error
+```
+
+```{r}
+# Mean Square Error for validation data
+
+# Residuals for validation data
+#If the logical se. fit is TRUE , standard errors of the predictions are also calculated.
+new_data <- data.frame(temp=validation$temp,hum=validation$hum, windspeed =validation$windspeed, season =validation$season, weathersit=validation$weathersit, workingday= validation$workingday)
+
+output <- predict(m,se.fit = TRUE, newdata = new_data)
+
+ResMLSValidation <- log(validation$casual) - output$fit
+
+mean((ResMLSValidation)^2)
+```
+
+```{r}
+# Relative Mean Square Error for validation data
+mean((ResMLSValidation)^2) / mean((validation$casual)^2)
+```
+
+```{r}
+# Create data frame with validation observation and prediction
+test = data.frame(validation$casual,exp(output$fit), 1:length(output$fit));
+colnames(test)[1] = "Casual"
+colnames(test)[2] = "Prediction"
+colnames(test)[3] = "Index"
+
+ggplot(data = test, aes(x = Index)) +
+  geom_line(aes(y = Casual, color = "Casual")) + 
+  geom_line(aes(y = Prediction, color="Prediction"), linetype="twodash") +  
+  scale_color_manual(name = element_blank(), labels = c("Casual","Prediction"),
+                     values = c("darkred", "steelblue")) + labs(y = "") + 
+  ggtitle("Validation")
+```
+
+```{r}
+m1 = lm(casual ~ temp + I(temp^2) + hum + windspeed + as.factor(season)+ as.factor(weathersit)+ as.factor(workingday))
+summary(m1)
+
+plot(m1$fitted.values,casual,xlab="Fitted Values")
+abline(lsfit(m1$fitted.values,log(casual)))
+
+
+```
+
+```{r}
+# Residuals for training data
+ResMLS <- resid(m1)
+
+# Mean Square Error for training data
+mean((ResMLS)^2)
+
+r <- log(casual) - m1$fitted.values
+mean (r^2)
+```

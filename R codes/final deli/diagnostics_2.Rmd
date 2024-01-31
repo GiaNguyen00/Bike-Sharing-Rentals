@@ -1,0 +1,231 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(car)
+library(dplyr)
+library(ggplot2)
+library(hrbrthemes)
+library(GGally)
+library(gridExtra)
+library(nlme)
+library(glmnet)
+library(grid)
+library(MASS)
+library("lindia")
+#install.packages('fields')
+library(fields)
+#install.packages("ggResidpanel")
+library(ggResidpanel)
+```
+
+
+```{r}
+daydata <- read.csv("/Users/bach_nguyen/MA 575/Labs/Project/Data/day.csv",header=TRUE)
+df = data.frame(daydata)
+train = df[df$yr == '0',]
+validation = df[df$yr == '1',]
+attach(train)
+```
+
+```{r}
+m <- lm(cnt ~ temp + windspeed)
+```
+
+```{r}
+standard_res <- rstandard(m)
+```
+
+
+```{r}
+#qq_2
+plots <- gg_diagnose(m, plot.all = FALSE)
+include_plots <- plots[5] 
+plot_all(include_plots) 
+
+```
+
+```{r}
+resid_panel(m, plots = "qq")
+```
+
+```{r}
+#resid_2
+ggplot(m, aes(x = .fitted, y = .resid)) +
+  geom_point() +
+  geom_smooth(method="loess", color="red", se=FALSE) +
+ labs(title='Residual vs. Fitted Values Plot', x='Fitted Values', y='Residuals')
+```
+
+```{r}
+ggplot(train, aes(sample=standard_res)) +
+  stat_qq() + 
+  stat_qq_line() +
+  labs(title = 'Normal Q-Q', x = 'Residuals', y = 'Theoretical Quantiles')
+```
+
+
+```{r}
+#resid_3
+ggplot(m, aes(x = temp, y = standard_res)) +
+  geom_point() +
+  geom_smooth(method="loess", color="red", se=FALSE) +
+ labs(title='Residual vs. Temperature Plot', x='Temperature', y='Residuals')
+```
+```{r}
+#resid_3
+ggplot(m, aes(x = windspeed, y = standard_res)) +
+  geom_point() +
+  geom_smooth(method="loess", color="red", se=FALSE) +
+ labs(title='Residual vs. Windspeed Plot', x='Windspeed', y='Residuals')
+```
+
+```{r}
+m3 <- lm(cnt~ temp + I(temp^2)+ I(temp^3) + windspeed + as.factor(weathersit) + as.factor(season))
+```
+
+
+```{r}
+standard_res_3 <- rstandard(m3)
+```
+
+```{r}
+ggplot(m3, aes(x = temp, y = standard_res_3)) +
+  geom_point() +
+  geom_smooth(method="loess", color="red", se=FALSE) +
+ labs(title='Residual vs. Temp Plot', x='Temp', y='Residuals')
+```
+```{r}
+ggplot(m3, aes(x = I(temp^2), y = standard_res_3)) +
+  geom_point() +
+  geom_smooth(method="loess", color="red", se=FALSE) +
+ labs(title='Residual vs. Temp^2 Plot', x='Temp^2', y='Residuals')
+```
+
+```{r}
+ggplot(m3, aes(x = I(temp^3), y = standard_res_3)) +
+  geom_point() +
+  geom_smooth(method="loess", color="red", se=FALSE) +
+ labs(title='Residual vs. Temp^3 Plot', x='Temp^3', y='Residuals')
+```
+
+```{r}
+ggplot(m3, aes(x = windspeed, y = standard_res_3)) +
+  geom_point() +
+  geom_smooth(method="loess", color="red", se=FALSE) +
+ labs(title='Residual vs. Windspeed Plot', x='Windspeed', y='Residuals')
+```
+
+```{r}
+ggplot(m3, aes(x = m$fitted.values, y = standard_res_3)) +
+  geom_point() +
+  geom_smooth(method="loess", color="red", se=FALSE) +
+ labs(title='Residual vs. Fitted Values Plot', x='Fitted Values', y='Residuals')
+```
+```{r}
+#resid_6a
+ggplot(m3, aes(x = .fitted, y = .resid)) +
+  geom_point(color = 'cornflowerblue') +
+  geom_smooth(method="loess", color="maroon", se=FALSE) +
+ labs(title='Residual vs. Fitted Values Plot', x='Fitted Values', y='Residuals')
+```
+```{r}
+#qq_6a
+plots <- gg_diagnose(m3, plot.all = FALSE)
+include_plots <- plots[9] 
+plot_all(include_plots) 
+```
+```{r}
+#scale_location_6a
+plots <- gg_diagnose(m3, plot.all = FALSE)
+include_plots <- plots[10] 
+plot_all(include_plots) 
+```
+```{r}
+#leverage_6a
+plots <- gg_diagnose(m3, plot.all = FALSE)
+include_plots <- plots[11] 
+plot_all(include_plots) 
+```
+
+
+```{r}
+# Density of some features
+GGscatterPlot <- function(data, mapping, ..., 
+                          method = "pearson") {
+  
+  #Get correlation coefficient
+  x <- GGally::eval_data_col(data, mapping$x)
+  y <- GGally::eval_data_col(data, mapping$y)
+  
+  cor <- cor(x, y, method = method, use="pairwise.complete.obs")
+  #Assemble data frame
+  df <- data.frame(x = x, y = y)
+  df <- na.omit(df)
+  # PCA
+  nonNull <- x!=0 & y!=0
+  dfpc <- prcomp(~x+y, df[nonNull,])
+  df$cols <- predict(dfpc, df)[,1]
+  # Define the direction of color range based on PC1 orientation:
+  dfsum <- x+y
+  colDirection <- ifelse(dfsum[which.max(df$cols)] < 
+                           dfsum[which.min(df$cols)],
+                         1,
+                         -1)
+  #Get 2D density for alpha
+  dens2D <- MASS::kde2d(df$x, df$y)
+  df$density <- fields::interp.surface(dens2D ,df[,c("x", "y")])
+  
+  if (any(df$density==0)) {
+    mini2D = min(df$density[df$density!=0]) #smallest non zero value
+    df$density[df$density==0] <- mini2D
+  }
+  #Prepare plot
+  pp <- ggplot(df, aes(x=x, y=y, alpha = 1/density, color = cols)) +
+    ggplot2::geom_point(shape=16, show.legend = FALSE) +
+    ggplot2::scale_color_viridis_c(direction = colDirection) +
+    ggplot2::scale_alpha(range = c(.05, .6)) +
+    ggplot2::geom_abline(intercept = 0, slope = 1, col="darkred") +
+    ggplot2::geom_label(
+      data = data.frame(
+        xlabel = min(x, na.rm = TRUE),
+        ylabel = max(y, na.rm = TRUE),
+        lab = round(cor, digits = 3)),
+      mapping = ggplot2::aes(x = xlabel,
+                             y = ylabel,
+                             label = lab),
+      hjust = 0, vjust = 1,
+      size = 3, fontface = "bold",
+      inherit.aes = FALSE # do not inherit anything from the ...
+    ) +
+    theme_bw()
+  return(pp)
+}
+
+ggdehist <- function(data, mapping, ...) {
+  x <- GGally::eval_data_col(data, mapping$x)
+  df <- data.frame(x = x)
+  dh1 <- ggplot(df, aes(x=x)) +
+    geom_histogram(aes(y=..density..), bins = 50, fill = 'steelblue', color='black', alpha=.4) +
+    geom_density(aes(y=..density..)) + 
+    theme_minimal()
+  return(dh1)
+}
+# corr plot
+data <- data.frame(cnt,temp,atemp, hum, windspeed)
+ggpairs(data, 
+        lower = list(continuous = wrap("density", alpha = 0.5), combo = "box"),
+        upper = list(continuous = wrap(GGscatterPlot)),
+        diag = list(continuous = wrap(ggdehist)))
+
+```
+
+```{r}
+data <- data.frame(cnt, temp, atemp, hum, windspeed)
+ggpairs(data, upper = list(continuous = wrap("points", alpha = 0.3,    size=0.1)),
+lower = list(continuous = wrap('cor', size = 4))) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, size=8))
+```
+
